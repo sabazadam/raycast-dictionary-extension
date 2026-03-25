@@ -12,7 +12,9 @@ type ExtensionPreferences = {
 • Google Gemini (free tier): get a key at aistudio.google.com → starts with AIza
 • Anthropic Claude: console.anthropic.com → starts with sk-ant-
 • OpenAI: platform.openai.com → starts with sk- */
-  "apiKey": string
+  "apiKey": string,
+  /** Tavily API Key (optional) - Get a free key at tavily.com — used to show an illustrative image alongside each definition. */
+  "tavilyApiKey"?: string
 }
 
 /** Preferences accessible in all the extension's commands */

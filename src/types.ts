@@ -7,10 +7,12 @@ export interface DictionaryEntry {
   synonyms: string[];
   provider: string;
   cachedAt: number;
+  imageUrl?: string;
 }
 
 export interface Preferences {
   apiKey: string;
+  tavilyApiKey?: string;
 }
 
 export interface CacheIndex {

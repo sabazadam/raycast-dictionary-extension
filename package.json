@@ -38,6 +38,13 @@
       "description": "Paste your API key — the provider is detected automatically.\n• Google Gemini (free tier): get a key at aistudio.google.com → starts with AIza\n• Anthropic Claude: console.anthropic.com → starts with sk-ant-\n• OpenAI: platform.openai.com → starts with sk-",
       "type": "password",
       "required": true
+    },
+    {
+      "name": "tavilyApiKey",
+      "title": "Tavily API Key (optional)",
+      "description": "Get a free key at tavily.com — used to show an illustrative image alongside each definition.",
+      "type": "password",
+      "required": false
     }
   ],
   "dependencies": {

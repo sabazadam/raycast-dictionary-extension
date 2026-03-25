@@ -1,6 +1,7 @@
 import { Detail, ActionPanel, Action, showToast, Toast, getPreferenceValues } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { lookUpWord, detectProvider, providerLabel } from "./api/index";
+import { fetchWordImage } from "./api/tavily";
 import { getCached, setCached } from "./utils/cache";
 import { DictionaryEntry, Preferences } from "./types";
 
@@ -13,8 +14,9 @@ function buildMarkdown(entry: DictionaryEntry | null, isLoading: boolean): strin
   if (!entry) return "No definition found.";
 
   const examples = entry.examples.map((ex, i) => `${i + 1}. ${ex}`).join("\n");
+  const imageBlock = entry.imageUrl ? `\n\n![${entry.word}](${entry.imageUrl})` : "";
 
-  return `# ${entry.word}\n\n${entry.definition}\n\n---\n\n## Examples\n\n${examples}`;
+  return `# ${entry.word}\n\n${entry.definition}\n\n---\n\n## Examples\n\n${examples}${imageBlock}`;
 }
 
 function buildCopyText(entry: DictionaryEntry): string {
@@ -43,7 +45,7 @@ function formatCachedDate(timestamp: number): string {
 
 export default function Command(props: { arguments: Arguments }) {
   const { word } = props.arguments;
-  const { apiKey } = getPreferenceValues<Preferences>();
+  const { apiKey, tavilyApiKey } = getPreferenceValues<Preferences>();
 
   const [entry, setEntry] = useState<DictionaryEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,17 +65,29 @@ export default function Command(props: { arguments: Arguments }) {
       await showToast({ style: Toast.Style.Animated, title: `Looking up "${word}"…` });
       try {
         const result = await lookUpWord(word, apiKey);
-        await setCached(result);
         setEntry(result);
+        setIsLoading(false);
         await showToast({ style: Toast.Style.Success, title: "Done" });
+
+        if (tavilyApiKey) {
+          const imageUrl = await fetchWordImage(result.word, result.partOfSpeech, tavilyApiKey);
+          if (imageUrl) {
+            const withImage = { ...result, imageUrl };
+            setEntry(withImage);
+            await setCached(withImage);
+          } else {
+            await setCached(result);
+          }
+        } else {
+          await setCached(result);
+        }
       } catch (err) {
+        setIsLoading(false);
         await showToast({
           style: Toast.Style.Failure,
           title: "Failed to look up word",
           message: err instanceof Error ? err.message : "Unknown error",
         });
-      } finally {
-        setIsLoading(false);
       }
     }
     fetchDefinition();
@@ -85,17 +99,29 @@ export default function Command(props: { arguments: Arguments }) {
     await showToast({ style: Toast.Style.Animated, title: `Re-fetching "${word}"…` });
     try {
       const result = await lookUpWord(word, apiKey);
-      await setCached(result);
       setEntry(result);
+      setIsLoading(false);
       await showToast({ style: Toast.Style.Success, title: "Updated" });
+
+      if (tavilyApiKey) {
+        const imageUrl = await fetchWordImage(result.word, result.partOfSpeech, tavilyApiKey);
+        if (imageUrl) {
+          const withImage = { ...result, imageUrl };
+          setEntry(withImage);
+          await setCached(withImage);
+        } else {
+          await setCached(result);
+        }
+      } else {
+        await setCached(result);
+      }
     } catch (err) {
+      setIsLoading(false);
       await showToast({
         style: Toast.Style.Failure,
         title: "Failed to re-fetch",
         message: err instanceof Error ? err.message : "Unknown error",
       });
-    } finally {
-      setIsLoading(false);
     }
   }
 
@@ -137,6 +163,9 @@ export default function Command(props: { arguments: Arguments }) {
         entry ? (
           <ActionPanel>
             <Action.CopyToClipboard title="Copy Definition" content={buildCopyText(entry)} />
+            {entry.imageUrl && (
+              <Action.CopyToClipboard title="Copy Image URL" content={entry.imageUrl} />
+            )}
             {fromCache && (
               <Action
                 title="Re-fetch from API"
